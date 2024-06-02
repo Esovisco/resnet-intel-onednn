@@ -103,6 +103,7 @@ void resblock(
     // TODO check what that does 
     auto conv1SourceMemory = conv1UserSourceMemory;
     if (conv1PrimitiveDesc.src_desc() != conv1UserSourceMemory.get_desc()) {
+        printf("reorder source mem\n");
         conv1UserSourceMemory = memory(conv1PrimitiveDesc.src_desc(), eng);
         netForward.push_back(reorder(conv1UserSourceMemory, conv1SourceMemory));
         netForwardArgs.push_back({{DNNL_ARG_FROM, conv1UserSourceMemory}, {DNNL_ARG_TO, conv1SourceMemory}});
@@ -110,6 +111,7 @@ void resblock(
 
     auto conv1WeightsMemory = conv1UserWeightsMemory;
     if (conv1PrimitiveDesc.weights_desc() != conv1UserWeightsMemory.get_desc()) {
+        printf("reorder weights mem\n");
         conv1WeightsMemory = memory(conv1PrimitiveDesc.weights_desc(), eng);
         netForward.push_back(reorder(conv1UserWeightsMemory, conv1WeightsMemory));
         netForwardArgs.push_back({{DNNL_ARG_FROM, conv1UserWeightsMemory}, {DNNL_ARG_TO, conv1WeightsMemory}});
@@ -121,6 +123,7 @@ void resblock(
     // add convolution primitive to network forward
     netForward.push_back(convolution_forward(conv1PrimitiveDesc));
     netForwardArgs.push_back({
+        {DNNL_ARG_SRC, conv1SourceMemory},
         {DNNL_ARG_WEIGHTS, conv1WeightsMemory},
         {DNNL_ARG_BIAS, conv1BiasMemory},
         {DNNL_ARG_DST, conv1DestMemory}
@@ -239,6 +242,7 @@ void resblock(
     // add convolution primitive to network forward
     netForward.push_back(convolution_forward(conv2PrimitiveDesc));
     netForwardArgs.push_back({
+        {DNNL_ARG_SRC, conv2SourceMemory},
         {DNNL_ARG_WEIGHTS, conv2WeightsMemory},
         {DNNL_ARG_BIAS, conv2BiasMemory},
         {DNNL_ARG_DST, conv2DestMemory}
@@ -286,10 +290,14 @@ void resblock(
     // check if we forgot something
     assert(netForward.size() == netForwardArgs.size() && "Something is missing in forward network stream");
 
+    printf("network forward size = %zu\n", netForward.size());
+    printf("network forward args size = %zu\n\n", netForwardArgs.size());
+
     int trainingIterations = 1;
     while (trainingIterations)  {
         // forward
         for (size_t i = 0; i < netForward.size(); ++i) {
+            printf("executing %zu net element\n", i);
             netForward.at(i).execute(s, netForwardArgs.at(i));
         }
     }
