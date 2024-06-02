@@ -103,18 +103,18 @@ void resblock(
     // TODO check what that does 
     auto conv1SourceMemory = conv1UserSourceMemory;
     if (conv1PrimitiveDesc.src_desc() != conv1UserSourceMemory.get_desc()) {
-        printf("reorder source mem\n");
         conv1UserSourceMemory = memory(conv1PrimitiveDesc.src_desc(), eng);
         netForward.push_back(reorder(conv1UserSourceMemory, conv1SourceMemory));
         netForwardArgs.push_back({{DNNL_ARG_FROM, conv1UserSourceMemory}, {DNNL_ARG_TO, conv1SourceMemory}});
+        printf("add reorder source mem\n");
     }
 
     auto conv1WeightsMemory = conv1UserWeightsMemory;
     if (conv1PrimitiveDesc.weights_desc() != conv1UserWeightsMemory.get_desc()) {
-        printf("reorder weights mem\n");
         conv1WeightsMemory = memory(conv1PrimitiveDesc.weights_desc(), eng);
         netForward.push_back(reorder(conv1UserWeightsMemory, conv1WeightsMemory));
         netForwardArgs.push_back({{DNNL_ARG_FROM, conv1UserWeightsMemory}, {DNNL_ARG_TO, conv1WeightsMemory}});
+        printf("add reorder weights mem\n");
     }
 
     // memory for conv destination
@@ -128,24 +128,50 @@ void resblock(
         {DNNL_ARG_BIAS, conv1BiasMemory},
         {DNNL_ARG_DST, conv1DestMemory}
     });
+    printf("add conv1\n");
 
     // -------------------------------
     //     1st batch normalization
     // -------------------------------
     memory::dims batchNorm1Dims = {BATCH_SIZE, convFilters, convDestDims.at(2), convDestDims.at(3)};
+    memory::dims scaleShift1Dims = {convFilters};
+
+    std::vector<float> scaleData1(product(scaleShift1Dims));
+    std::vector<float> shiftData1(product(scaleShift1Dims));
+    std::generate(scaleData1.begin(), scaleData1.end(), []() {
+        static int i = 0;
+        return std::sin(i++ * 2.f);
+    });
+    std::generate(shiftData1.begin(), shiftData1.end(), []() {
+        static int i = 0;
+        return std::tan(float(i++));
+    });
+
+    auto batchNorm1DestMD = memory::desc(batchNorm1Dims, dt::f32, tag::nchw);
+    auto batchNorm1ScaleShiftMD = memory::desc(scaleShift1Dims, dt::f32, tag::x);
+
+    auto batchNorm1DestMemory = memory(batchNorm1DestMD, eng);
+    auto batchNorm1ScaleMemory = memory(batchNorm1ScaleShiftMD, eng);
+    auto batchNorm1ShiftMemory = memory(batchNorm1ScaleShiftMD, eng);
+    write_to_dnnl_memory(scaleData1.data(), batchNorm1ScaleMemory);
+    write_to_dnnl_memory(shiftData1.data(), batchNorm1ShiftMemory);
 
     const float epsilon1 = 0.00001;
     auto batchNorm1PrimitiveDesc = batch_normalization_forward::primitive_desc(
         eng, prop_kind::forward, conv1PrimitiveDesc.dst_desc(), conv1PrimitiveDesc.dst_desc(), epsilon1, normalization_flags::none
     );
 
-    auto batchNorm1DestMemory = memory(batchNorm1PrimitiveDesc.dst_desc(), eng);
+    auto batchNorm1MeanMemory = memory(batchNorm1PrimitiveDesc.mean_desc(), eng);
+    auto batchNorm1VarianceMemory = memory(batchNorm1PrimitiveDesc.variance_desc(), eng);
 
     netForward.push_back(batch_normalization_forward(batchNorm1PrimitiveDesc));
     netForwardArgs.push_back({
         {DNNL_ARG_SRC, conv1DestMemory},
-        {DNNL_ARG_DST, batchNorm1DestMemory}
+        {DNNL_ARG_DST, batchNorm1DestMemory},
+        {DNNL_ARG_MEAN, batchNorm1MeanMemory},
+        {DNNL_ARG_VARIANCE, batchNorm1VarianceMemory},
     });
+    printf("add 1st batchnorm\n");
 
     // -------------------------------
     //     1st RELU
@@ -164,6 +190,7 @@ void resblock(
         {DNNL_ARG_SRC, batchNorm1DestMemory},
         {DNNL_ARG_DST, relu1DestMemory}
     });
+    printf("add 1st ReLU");
 
     // -------------------------------
     //     2nd conv layer
@@ -227,6 +254,7 @@ void resblock(
         conv2UserSourceMemory = memory(conv2PrimitiveDesc.src_desc(), eng);
         netForward.push_back(reorder(conv2UserSourceMemory, conv2SourceMemory));
         netForwardArgs.push_back({{DNNL_ARG_FROM, conv2UserSourceMemory}, {DNNL_ARG_TO, conv2SourceMemory}});
+        printf("add source mem reorder\n");
     }
 
     auto conv2WeightsMemory = conv2UserWeightsMemory;
@@ -234,6 +262,7 @@ void resblock(
         conv2WeightsMemory = memory(conv2PrimitiveDesc.weights_desc(), eng);
         netForward.push_back(reorder(conv2UserWeightsMemory, conv2WeightsMemory));
         netForwardArgs.push_back({{DNNL_ARG_FROM, conv2UserWeightsMemory}, {DNNL_ARG_TO, conv2WeightsMemory}});
+        printf("add weights mem reorder\n");
     }
 
     // memory for conv destination
@@ -247,24 +276,51 @@ void resblock(
         {DNNL_ARG_BIAS, conv2BiasMemory},
         {DNNL_ARG_DST, conv2DestMemory}
     });
+    printf("add 2nd conv\n");
 
     // -------------------------------
     //     2nd batch normalization
     // -------------------------------
     memory::dims batchNorm2Dims = {BATCH_SIZE, convFilters, convDestDims.at(2), convDestDims.at(3)};
 
+    memory::dims scaleShift2Dims = {convFilters};
+
+    std::vector<float> scaleData2(product(scaleShift2Dims));
+    std::vector<float> shiftData2(product(scaleShift2Dims));
+    std::generate(scaleData2.begin(), scaleData2.end(), []() {
+        static int i = 0;
+        return std::sin(i++ * 2.f);
+    });
+    std::generate(shiftData2.begin(), shiftData2.end(), []() {
+        static int i = 0;
+        return std::tan(float(i++));
+    });
+
+    auto batchNorm2DestMD = memory::desc(batchNorm2Dims, dt::f32, tag::nchw);
+    auto batchNorm2ScaleShiftMD = memory::desc(scaleShift2Dims, dt::f32, tag::x);
+
+    auto batchNorm2DestMemory = memory(batchNorm2DestMD, eng);
+    auto batchNorm2ScaleMemory = memory(batchNorm2ScaleShiftMD, eng);
+    auto batchNorm2ShiftMemory = memory(batchNorm2ScaleShiftMD, eng);
+    write_to_dnnl_memory(scaleData2.data(), batchNorm2ScaleMemory);
+    write_to_dnnl_memory(shiftData2.data(), batchNorm2ShiftMemory);
+
     const float epsilon2 = 0.00001;
     auto batchNorm2PrimitiveDesc = batch_normalization_forward::primitive_desc(
         eng, prop_kind::forward, conv2PrimitiveDesc.dst_desc(), conv2PrimitiveDesc.dst_desc(), epsilon2, normalization_flags::none
     );
 
-    auto batchNorm2DestMemory = memory(batchNorm2PrimitiveDesc.dst_desc(), eng);
+    auto batchNorm2MeanMemory = memory(batchNorm1PrimitiveDesc.mean_desc(), eng);
+    auto batchNorm2VarianceMemory = memory(batchNorm1PrimitiveDesc.variance_desc(), eng);
 
     netForward.push_back(batch_normalization_forward(batchNorm2PrimitiveDesc));
     netForwardArgs.push_back({
         {DNNL_ARG_SRC, conv2DestMemory},
-        {DNNL_ARG_DST, batchNorm2DestMemory}
+        {DNNL_ARG_DST, batchNorm2DestMemory},
+        {DNNL_ARG_MEAN, batchNorm2MeanMemory},
+        {DNNL_ARG_VARIANCE, batchNorm2VarianceMemory},
     });
+    printf("add 2nd batchnorm\n");
 
     // -------------------------------
     //     2nd RELU
@@ -283,23 +339,22 @@ void resblock(
         {DNNL_ARG_SRC, batchNorm2DestMemory},
         {DNNL_ARG_DST, relu2DestMemory}
     });
-
+    printf("add 2nd relu\n");
+    printf("\n");
 
     // TODO add backward stream
 
     // check if we forgot something
     assert(netForward.size() == netForwardArgs.size() && "Something is missing in forward network stream");
 
-    printf("network forward size = %zu\n", netForward.size());
-    printf("network forward args size = %zu\n\n", netForwardArgs.size());
-
+    printf("executing network forward\n\n");
     int trainingIterations = 1;
     while (trainingIterations)  {
         // forward
         for (size_t i = 0; i < netForward.size(); ++i) {
-            printf("executing %zu net element\n", i);
             netForward.at(i).execute(s, netForwardArgs.at(i));
         }
+        trainingIterations -= 1;
     }
 
     s.wait();
