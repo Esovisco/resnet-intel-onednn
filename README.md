@@ -55,3 +55,32 @@ Then run
 The program should return `Example passed on CPU`
 
 Feel free to experiment and familiarize yourself with the code.
+
+## CLion setup
+
+### Toolchains
+
+Open `Settings -> Build, Execution, Deployment -> Toolchains`, then fill out the following values:
+
+![toolchains.png](.github/assets/toolchains.png)
+
+These should be based on the OneDNN installation path *(/opt/intel/oneapi) on Linux*
+
+### CMake profile
+
+Then check if the CMake profile is created:
+
+![cmake.png](.github/assets/cmake.png)
+
+The default profile is disabled for our purposes.
+
+### Using the debugger
+
+I found that debugging will not work unless you perform this trick:
+
+> Instead of starting CLion normally, first source the OneDNN vars (`bass source /opt/intel/oneapi/setvars.sh`), 
+> then start CLion using the CLI(`clion`) 
+
+### Workflow
+
+You should be able to build, execute and debug any program as it's done in any other IDE 
