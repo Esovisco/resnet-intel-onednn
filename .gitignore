@@ -1,7 +1,9 @@
 # Binaries
 getting_started
+.idea
 resnet
 cnn_training
+cmake-build-intel-onednn
 
 # Makefile
 Makefile

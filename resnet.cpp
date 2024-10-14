@@ -9,7 +9,14 @@
 using namespace dnnl;
 
 const int BATCH_SIZE = 16;
+const int SAMPLE_WIDTH = 224;
+const int SAMPLE_HEIGHT = 224;
+const int NUMBER_OF_CHANNELS = 3;
 
+const int MASK_W = 3;
+const int MASK_H = 3;
+
+const int CONVOLUTION_FILTERS_START_AMOUNT = 64;
 /**
  * Individual residual block
  *
@@ -22,10 +29,11 @@ const int BATCH_SIZE = 16;
 void resblock(
     engine::kind engineKind
 ) {
+    int convFilters = CONVOLUTION_FILTERS_START_AMOUNT;
+
     // TODO WIP, these should be function params
-    int convFilters = 64;
-    memory::dims convSourceDims = {BATCH_SIZE, 3, 224, 224};
-    memory::dims convDestDims {BATCH_SIZE, convFilters, 224, 224};
+    memory::dims convSourceDims = {BATCH_SIZE, NUMBER_OF_CHANNELS, SAMPLE_WIDTH, SAMPLE_HEIGHT};
+    memory::dims convDestDims {BATCH_SIZE, convFilters, SAMPLE_WIDTH, SAMPLE_HEIGHT};
     bool downSample = false;
 
     using tag = memory::format_tag;
@@ -60,7 +68,7 @@ void resblock(
 
     // 3x3 convolution weights and biases initialized to sin(i) (nonzero)
     memory::dims conv1WeightsDims = {
-        convFilters, convSourceDims.at(1), 3, 3};
+        convFilters, convSourceDims.at(1), MASK_W, MASK_H};
     memory::dims conv1BiasDims = {convFilters};
     memory::dims conv1Strides = {downSample ? 2 : 1, downSample ? 2 : 1};
     memory::dims conv1Padding = {downSample ? 0 : 1, downSample ? 0 : 1};
@@ -271,7 +279,7 @@ void resblock(
     // add convolution primitive to network forward
     netForward.push_back(convolution_forward(conv2PrimitiveDesc));
     netForwardArgs.push_back({
-        {DNNL_ARG_SRC, conv2SourceMemory},
+        {DNNL_ARG_SRC, relu1DestMemory},
         {DNNL_ARG_WEIGHTS, conv2WeightsMemory},
         {DNNL_ARG_BIAS, conv2BiasMemory},
         {DNNL_ARG_DST, conv2DestMemory}
