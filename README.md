@@ -76,10 +76,10 @@ The default profile is disabled for our purposes.
 
 ### Using the debugger
 
-I found that debugging will not work unless you perform this trick:
-
-> Instead of starting CLion normally, first source the OneDNN vars (`bass source /opt/intel/oneapi/setvars.sh`), 
-> then start CLion using the CLI(`clion`) 
+We found that compiling or debugging may not work unless you perform this trick:
+> [!TIP]
+> Instead of starting CLion normally, first source the OneDNN vars (`source /opt/intel/oneapi/setvars.sh` 
+> or `bass source /opt/intel/oneapi/setvars.sh`), then start CLion using the CLI(`clion`) 
 
 ### Workflow
 
