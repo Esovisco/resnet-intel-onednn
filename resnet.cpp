@@ -351,6 +351,27 @@ void resblock(
     printf("\n");
 
     // TODO add backward stream
+    // __________________________________________________
+    // ==================================================
+    //    BACKWARD STREAM
+    // __________________________________________________
+    // ==================================================
+
+    /*
+     * TODO
+     * backward 2nd relu
+     * backward 2nd batchnorm
+     * backward 2nd conv
+     * backward 1st relu
+     * backward 1st batchnorm
+     * backward 1st conv
+     */
+
+    // initialize difference with some non-zero values
+    std::vector<float> net_diff_dst(BATCH_SIZE * 96 * 27 * 27);
+    for (size_t i = 0; i < net_diff_dst.size(); ++i)
+        net_diff_dst[i] = sinf((float)i);
+
 
     // check if we forgot something
     assert(netForward.size() == netForwardArgs.size() && "Something is missing in forward network stream");

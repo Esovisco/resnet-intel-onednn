@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CMakeSharedSettings">
+    <configurations>
+      <configuration PROFILE_NAME="Intel OneDNN" ENABLED="true" TOOLCHAIN_NAME="Intel OneDNN" GENERATION_OPTIONS="-DCMAKE_C_COMPILER=/opt/intel/oneapi/compiler/2024.2/bin/icx -DCMAKE_CXX_COMPILER=/opt/intel/oneapi/compiler/2024.2/bin/icpx" NO_GENERATOR="true" />
+    </configurations>
+  </component>
+</project>
