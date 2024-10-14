@@ -367,10 +367,24 @@ void resblock(
      * backward 1st conv
      */
 
-    // initialize difference with some non-zero values
-    std::vector<float> net_diff_dst(BATCH_SIZE * 96 * 27 * 27);
-    for (size_t i = 0; i < net_diff_dst.size(); ++i)
-        net_diff_dst[i] = sinf((float)i);
+    // initialize difference data with some non-zero values
+    // this vector is only used to initialize the destination memory with something
+    std::vector<float> netDiffDst(BATCH_SIZE * 96 * 27 * 27);
+    for (size_t i = 0; i < netDiffDst.size(); ++i)
+        netDiffDst[i] = sinf((float)i);
+
+    auto relu2BackwardDestMemory
+        = memory({relu2Dims, dt::f32, tag::nchw}, eng);
+
+    write_to_dnnl_memory(netDiffDst.data(), relu2BackwardDestMemory);
+
+    auto relu2BackwardPrimitiveDesc = eltwise_backward::primitive_desc(
+            eng, algorithm::eltwise_relu,
+            relu2DestMemory.get_desc(),
+            relu2BackwardDestMemory.get_desc(),
+            relu2DestMemory.get_desc(),
+            negativeSlope2,
+            relu2PrimitiveDesc);
 
 
     // check if we forgot something
